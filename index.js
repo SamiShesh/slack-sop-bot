@@ -1,46 +1,37 @@
-require('dotenv').config();
 const { App } = require('@slack/bolt');
-const { google } = require('googleapis');
-const fs = require('fs');
+const express = require('express');
+const bodyParser = require('body-parser');
+require('dotenv').config();
 
-// Load Google credentials
-const auth = new google.auth.GoogleAuth({
-  keyFile: 'google-key.json',
-  scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
+const app = express();
+app.use(bodyParser.json());
+
+// ⚠️ Step: Respond to Slack's URL verification
+app.post('/slack/events', (req, res) => {
+  if (req.body.type === 'url_verification') {
+    return res.status(200).send(req.body.challenge); // ✅ Respond with challenge
+  }
+
+  // Let Bolt handle other events
+  boltApp.processEvent(req, res);
 });
 
-const app = new App({
+const boltApp = new App({
   token: process.env.SLACK_BOT_TOKEN,
   signingSecret: process.env.SLACK_SIGNING_SECRET,
+  socketMode: false,
+  appToken: process.env.SLACK_APP_TOKEN,
+  receiver: {
+    expressApp: app,
+    router: express.Router(),
+  },
 });
 
-// When someone types: sop fare dispute
-app.message(/^sop (.+)/i, async ({ message, say, context }) => {
-  const keyword = context.matches[1].toLowerCase();
-
-  try {
-    const sheets = google.sheets({ version: 'v4', auth: await auth.getClient() });
-    const response = await sheets.spreadsheets.values.get({
-      spreadsheetId: process.env.SPREADSHEET_ID,
-      range: 'SOPs!A2:C', // Assumes headers in row 1, content starts row 2
-    });
-
-    const rows = response.data.values;
-    const match = rows.find(row => row[0].toLowerCase() === keyword);
-
-    if (match) {
-      const [title, summary, link] = match;
-      await say(`📘 *${title}*\n\n${summary}\n🔗 <${link}|View Full SOP>`);
-    } else {
-      await say(`❓ Sorry, I couldn't find an SOP for *${keyword}*.`);
-    }
-  } catch (err) {
-    console.error(err);
-    await say('⚠️ There was an error fetching the SOP. Please try again later.');
-  }
+boltApp.event('app_mention', async ({ event, say }) => {
+  await say(`👋 Hi <@${event.user}>! What SOP are you looking for?`);
 });
 
 (async () => {
-  await app.start(process.env.PORT || 3000);
+  await boltApp.start(process.env.PORT || 10000);
   console.log('⚡️ Slack SOP Bot is running!');
 })();
