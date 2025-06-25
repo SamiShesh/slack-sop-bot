@@ -26,9 +26,17 @@ const boltApp = new App({
 // ✅ Express instance to add optional routes
 const app = receiver.app;
 
-// (Optional) Root GET to test the bot is running
+// ✅ Root GET route for Render health check
 app.get('/', (req, res) => {
   res.send('✅ Slack SOP Bot is running');
+});
+
+// ✅ Handle Slack URL verification challenge
+app.post('/slack/events', (req, res, next) => {
+  if (req.body.type === 'url_verification') {
+    return res.status(200).send(req.body.challenge);
+  }
+  next();
 });
 
 // ✅ Google client setup (optional)
@@ -44,9 +52,13 @@ boltApp.event('app_mention', async ({ event, say }) => {
   await say(`👋 Hi <@${event.user}>! What SOP are you looking for?`);
 });
 
-// ✅ Start the bot
+// ✅ Start the bot + server (Render fix)
 (async () => {
-  const port = process.env.PORT;
-  await boltApp.start(port);
-  console.log(`⚡️ Slack SOP Bot is running on port ${port}!`);
+  const port = process.env.PORT || 3000;
+
+  await boltApp.start(); // Start Bolt internals
+
+  app.listen(port, () => {
+    console.log(`⚡️ Slack SOP Bot is running on port ${port}!`);
+  });
 })();
