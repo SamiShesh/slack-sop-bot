@@ -12,7 +12,7 @@ const privateKey = process.env.GOOGLE_PRIVATE_KEY
 // ✅ Create a custom ExpressReceiver
 const receiver = new ExpressReceiver({
   signingSecret: process.env.SLACK_SIGNING_SECRET,
-  endpoints: '/slack/events', // Default endpoint
+  endpoints: '/slack/events',
 });
 
 // ✅ Slack Bolt App with custom receiver
@@ -23,18 +23,15 @@ const boltApp = new App({
   receiver,
 });
 
-// ✅ Express instance to access the app
+// ✅ Express instance to add optional routes
 const app = receiver.app;
 
-// ✅ Handle Slack URL verification
-app.post('/slack/events', (req, res, next) => {
-  if (req.body.type === 'url_verification') {
-    return res.status(200).send(req.body.challenge);
-  }
-  next();
+// (Optional) Root GET to test the bot is running
+app.get('/', (req, res) => {
+  res.send('✅ Slack SOP Bot is running');
 });
 
-// ✅ (Optional) Google client setup
+// ✅ Google client setup (optional)
 const jwtClient = new google.auth.JWT(
   process.env.GOOGLE_CLIENT_EMAIL,
   null,
