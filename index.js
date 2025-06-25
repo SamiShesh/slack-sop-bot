@@ -23,23 +23,23 @@ const boltApp = new App({
   receiver,
 });
 
-// ✅ Express instance to add optional routes
+// ✅ Express instance to add custom routes
 const app = receiver.app;
 
-// ✅ Root GET route for Render health check
+// ✅ Optional root handler for testing from browser or health checks
 app.get('/', (req, res) => {
-  res.send('✅ Slack SOP Bot is running');
+  res.status(200).send('✅ Slack SOP Bot is running');
 });
 
-// ✅ Handle Slack URL verification challenge
-app.post('/slack/events', (req, res, next) => {
+// ✅ Respond to Slack's challenge request for event verification
+app.post('/slack/events', express.json(), (req, res, next) => {
   if (req.body.type === 'url_verification') {
     return res.status(200).send(req.body.challenge);
   }
-  next();
+  next(); // Let Bolt handle other events
 });
 
-// ✅ Google client setup (optional)
+// ✅ Google API client setup (if needed for SOP retrieval from Sheets)
 const jwtClient = new google.auth.JWT(
   process.env.GOOGLE_CLIENT_EMAIL,
   null,
@@ -47,18 +47,14 @@ const jwtClient = new google.auth.JWT(
   ['https://www.googleapis.com/auth/cloud-platform']
 );
 
-// ✅ Slack event listener
+// ✅ Handle "app_mention" events
 boltApp.event('app_mention', async ({ event, say }) => {
   await say(`👋 Hi <@${event.user}>! What SOP are you looking for?`);
 });
 
-// ✅ Start the bot + server (Render fix)
+// ✅ Start the Slack bot
 (async () => {
-  const port = process.env.PORT || 3000;
-
-  await boltApp.start(); // Start Bolt internals
-
-  app.listen(port, () => {
-    console.log(`⚡️ Slack SOP Bot is running on port ${port}!`);
-  });
+  const port = process.env.PORT || 10000;
+  await boltApp.start(port);
+  console.log(`⚡️ Slack SOP Bot is running on port ${port}!`);
 })();
