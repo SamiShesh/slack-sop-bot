@@ -46,7 +46,7 @@ boltApp.event('app_mention', async ({ event, say }) => {
 
 // ✅ Start the bot
 (async () => {
-  const port = process.env.PORT || 3000;
+  const port = process.env.PORT;
   await boltApp.start(port);
   console.log(`⚡️ Slack SOP Bot is running on port ${port}!`);
 })();
